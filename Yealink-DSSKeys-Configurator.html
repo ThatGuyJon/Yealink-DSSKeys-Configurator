@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yealink DSSKeys Configurator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .drag-over {
+      background-color: #f0f9ff;
+      border: 2px dashed #3b82f6;
+    }
+    .key-item:active {
+      transform: scale(0.98);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .section {
+      transition: opacity 0.3s ease;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 p-4 md:p-8">
+  <div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <h1 class="text-3xl font-bold text-blue-600">Yealink DSSKeys Configurator</h1>
+      <p class="text-gray-600">Manage expansion module keys for Yealink phones</p>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="flex mb-6 border-b border-gray-200">
+      <button id="config-tab" class="tab-button px-4 py-2 font-medium text-blue-600 border-b-2 border-blue-600" onclick="showSection('config')">
+        <i class="fas fa-cog mr-2"></i>Configure Keys
+      </button>
+      <button id="import-tab" class="tab-button px-4 py-2 font-medium text-gray-500 hover:text-blue-600" onclick="showSection('import')">
+        <i class="fas fa-file-import mr-2"></i>Import/Export
+      </button>
+    </div>
+
+    <!-- Error Alert -->
+    <div id="error-alert" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <span class="font-bold">Error:</span>
+          <span id="error-message"></span>
+        </div>
+        <button onclick="document.getElementById('error-alert').classList.add('hidden')" class="text-red-700 hover:text-red-900">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Success Alert -->
+    <div id="success-alert" class="hidden bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+      <div class="flex justify-between items-center">
+        <div>
+          <span class="font-bold">Success:</span>
+          <span id="success-message"></span>
+        </div>
+        <button onclick="document.getElementById('success-alert').classList.add('hidden')" class="text-green-700 hover:text-green-900">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Configuration Section -->
+    <div id="config-section" class="section">
+      <!-- Module Controls -->
+      <div class="flex justify-between mb-4">
+        <button onclick="addModule()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
+          <i class="fas fa-plus mr-2"></i>Add Module
+        </button>
+        <button onclick="sortAllKeys()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
+          <i class="fas fa-sort-alpha-down mr-2"></i>Sort All Keys
+        </button>
+      </div>
+
+      <!-- Module Cards Container - Changed to 3 columns -->
+      <div id="modules-container" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <!-- Modules will be dynamically inserted here -->
+      </div>
+    </div>
+
+    <!-- Import/Export Section -->
+    <div id="import-section" class="section hidden">
+      <div class="bg-white p-4 rounded shadow-md">
+        <div class="mb-4">
+          <label class="block text-gray-700 font-medium mb-2">Configuration Text</label>
+          <textarea id="config-text" class="w-full h-64 border rounded p-2 font-mono text-sm" 
+                    placeholder="Paste your Yealink config here..."></textarea>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button onclick="importConfig()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+            <i class="fas fa-file-import mr-2"></i>Import Config
+          </button>
+          <button onclick="exportConfig()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded">
+            <i class="fas fa-file-export mr-2"></i>Export Config
+          </button>
+          <button onclick="resetConfig()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
+            <i class="fas fa-trash-alt mr-2"></i>Reset Config
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Data Structure
+    let config = {
+      modules: {}
+    };
+
+    // UI State Management
+    let currentSection = 'config';
+
+    // Initialize the app
+    document.addEventListener('DOMContentLoaded', () => {
+      // Add a default module if none exist
+      if (Object.keys(config.modules).length === 0) {
+        addModule();
+      }
+      renderConfig();
+    });
+
+    // Section Navigation
+    function showSection(section) {
+      document.getElementById('config-section').classList.toggle('hidden', section !== 'config');
+      document.getElementById('import-section').classList.toggle('hidden', section !== 'import');
+      
+      // Update tab styling
+      document.getElementById('config-tab').classList.toggle('text-blue-600', section === 'config');
+      document.getElementById('config-tab').classList.toggle('text-gray-500', section !== 'config');
+      document.getElementById('config-tab').classList.toggle('border-blue-600', section === 'config');
+      document.getElementById('config-tab').classList.toggle('border-transparent', section !== 'config');
+      
+      document.getElementById('import-tab').classList.toggle('text-blue-600', section === 'import');
+      document.getElementById('import-tab').classList.toggle('text-gray-500', section !== 'import');
+      document.getElementById('import-tab').classList.toggle('border-blue-600', section === 'import');
+      document.getElementById('import-tab').classList.toggle('border-transparent', section !== 'import');
+      
+      currentSection = section;
+    }
+
+    // Module Management
+    function addModule() {
+      const moduleId = Object.keys(config.modules).length + 1;
+      config.modules[moduleId] = { 
+        keys: {},
+        type: '40-key' // Default to 40-key module
+      };
+      showSuccess(`Added 40-key module ${moduleId}`);
+      renderConfig();
+    }
+
+function changeModuleType(moduleId, type) {
+  if (config.modules[moduleId]) {
+    // Force re-render by creating new keys object
+    const keys = {...config.modules[moduleId].keys};
+    config.modules[moduleId] = {
+      type: type,
+      keys: keys
+    };
+    showSuccess(`Module ${moduleId} set to ${type} configuration`);
+    renderConfig();
+  }
+}
+
+    function removeModule(moduleId) {
+      if (confirm(`Are you sure you want to remove module ${moduleId}?`)) {
+        delete config.modules[moduleId];
+        showSuccess(`Removed module ${moduleId}`);
+        renderConfig();
+      }
+    }
+
+    // Key Management
+    function addKey(moduleId) {
+      const maxKeys = config.modules[moduleId].type === '60-key' ? 60 : 40;
+      if (Object.keys(config.modules[moduleId].keys).length >= maxKeys) {
+        showError(`Maximum ${maxKeys} keys per module reached`);
+        return;
+      }
+      
+      const keyId = Object.keys(config.modules[moduleId].keys).length + 1;
+      config.modules[moduleId].keys[keyId] = {
+        extension: '',
+        label: '',
+        line: '1',
+        type: '16',
+        value: '',
+        locked: false
+      };
+      const currentMaxKeys = config.modules[moduleId].type === '60-key' ? 60 : 40;
+      showSuccess(`Added key ${keyId} to module ${moduleId} (${Object.keys(config.modules[moduleId].keys).length}/${currentMaxKeys})`);
+      renderConfig();
+    }
+
+    function removeKey(moduleId, keyId) {
+      if (confirm(`Are you sure you want to remove key ${keyId} from module ${moduleId}?`)) {
+        delete config.modules[moduleId].keys[keyId];
+        showSuccess(`Removed key ${keyId} from module ${moduleId}`);
+        renderConfig();
+      }
+    }
+
+    function updateKey(moduleId, keyId, property, value) {
+      if (config.modules[moduleId] && config.modules[moduleId].keys[keyId]) {
+        config.modules[moduleId].keys[keyId][property] = value;
+        
+        // Auto-sync Value when Type=BLF
+        if (property === 'extension' && config.modules[moduleId].keys[keyId].type === '16') {
+          config.modules[moduleId].keys[keyId].value = value;
+        }
+      }
+    }
+
+    function handleTypeChange(moduleId, keyId, type) {
+      updateKey(moduleId, keyId, 'type', type);
+      
+      // Set line automatically
+      updateKey(moduleId, keyId, 'line', type === '16' ? '1' : '0');
+      
+      // Update UI visibility
+      const keyElement = document.querySelector(`[data-module-id="${moduleId}"][data-key-id="${keyId}"]`);
+      if (keyElement) {
+        const extensionField = keyElement.querySelector('.extension-field');
+        const valueField = keyElement.querySelector('.value-field');
+        
+        if (type === '3') {
+          extensionField.classList.add('hidden');
+          valueField.classList.remove('hidden');
+          updateKey(moduleId, keyId, 'extension', '');
+        } else {
+          extensionField.classList.remove('hidden');
+          valueField.classList.add('hidden');
+          // Sync value with extension
+          updateKey(moduleId, keyId, 'value', config.modules[moduleId].keys[keyId].extension || '');
+        }
+      }
+    }
+
+    function handleExtensionChange(moduleId, keyId, value) {
+      updateKey(moduleId, keyId, 'extension', value);
+      
+      // If type is BLF, sync value with extension
+      if (config.modules[moduleId].keys[keyId].type === '16') {
+        updateKey(moduleId, keyId, 'value', value);
+      }
+    }
+
+    // Drag-and-Drop Functions
+    let draggedKey = null;
+
+    function dragStart(moduleId, keyId) {
+      draggedKey = { moduleId, keyId };
+    }
+
+    function dragOver(event) {
+      event.preventDefault();
+      event.currentTarget.classList.add('drag-over');
+    }
+
+    function dragLeave(event) {
+      event.currentTarget.classList.remove('drag-over');
+    }
+
+    function drop(moduleId, keyId) {
+      const targetElement = document.querySelector(`[data-module-id="${moduleId}"][data-key-id="${keyId}"]`);
+      if (targetElement) {
+        targetElement.classList.remove('drag-over');
+      }
+      
+      if (draggedKey && (draggedKey.moduleId !== moduleId || draggedKey.keyId !== keyId)) {
+        // Swap keys
+        const temp = {...config.modules[draggedKey.moduleId].keys[draggedKey.keyId]};
+        config.modules[draggedKey.moduleId].keys[draggedKey.keyId] = {...config.modules[moduleId].keys[keyId]};
+        config.modules[moduleId].keys[keyId] = temp;
+        renderConfig();
+        showSuccess(`Moved key ${draggedKey.keyId} to position ${keyId}`);
+      }
+      draggedKey = null;
+    }
+
+    // Sorting Functions
+    function sortKeys(moduleId) {
+      // Create a copy of the original keys to preserve locked keys
+      const originalKeys = JSON.parse(JSON.stringify(config.modules[moduleId].keys));
+      const maxKeys = config.modules[moduleId].type === '60-key' ? 60 : 40;
+      
+      // First, preserve all locked keys exactly as they were
+      config.modules[moduleId].keys = {};
+      Object.entries(originalKeys).forEach(([keyId, keyData]) => {
+        if (keyData.locked) {
+          config.modules[moduleId].keys[keyId] = JSON.parse(JSON.stringify(keyData));
+        }
+      });
+
+      // Collect and sort unlocked keys
+      let unlockedKeys = [];
+      Object.entries(originalKeys).forEach(([keyId, keyData]) => {
+        if (!keyData.locked) {
+          unlockedKeys.push({
+            ...keyData,
+            originalKeyId: keyId
+          });
+        }
+      });
+      unlockedKeys.sort((a, b) => a.label.localeCompare(b.label));
+
+      // Place unlocked keys in available positions
+      let unlockedKeyIndex = 0;
+      for (let keyId = 1; keyId <= maxKeys; keyId++) {
+        if (unlockedKeyIndex >= unlockedKeys.length) break;
+        
+        if (!config.modules[moduleId].keys[keyId]) {
+          const key = unlockedKeys[unlockedKeyIndex];
+          config.modules[moduleId].keys[keyId] = {
+            extension: key.extension,
+            label: key.label,
+            line: key.line,
+            type: key.type,
+            value: key.value,
+            locked: false
+          };
+          unlockedKeyIndex++;
+        }
+      }
+
+      showSuccess(`Sorted keys in module ${moduleId} (locked keys preserved)`);
+      renderConfig();
+    }
+
+    function toggleLockKey(moduleId, keyId) {
+      if (!config.modules[moduleId].keys[keyId].locked) {
+        config.modules[moduleId].keys[keyId].locked = true;
+        showSuccess(`Key ${keyId} locked`);
+      } else {
+        config.modules[moduleId].keys[keyId].locked = false;
+        showSuccess(`Key ${keyId} unlocked`);
+      }
+      renderConfig();
+    }
+
+    function sortAllKeys() {
+      // Create a copy of the original config to preserve locked keys
+      const originalConfig = JSON.parse(JSON.stringify(config));
+      
+      // First, preserve all locked keys exactly as they were in their original positions
+      Object.keys(config.modules).forEach(moduleId => {
+        config.modules[moduleId].keys = {};
+        
+        // Restore all keys but only keep locked ones in their exact positions
+        Object.entries(originalConfig.modules[moduleId].keys).forEach(([keyId, keyData]) => {
+          if (keyData.locked) {
+            config.modules[moduleId].keys[keyId] = JSON.parse(JSON.stringify(keyData));
+          }
+        });
+      });
+
+      // Collect all unlocked keys
+      let allUnlockedKeys = [];
+      Object.entries(originalConfig.modules).forEach(([moduleId, moduleData]) => {
+        Object.entries(moduleData.keys).forEach(([keyId, keyData]) => {
+          if (!keyData.locked) {
+            allUnlockedKeys.push({
+              ...keyData,
+              originalModule: moduleId,
+              originalKeyId: keyId
+            });
+          }
+        });
+      });
+
+      // Sort unlocked keys alphabetically
+      allUnlockedKeys.sort((a, b) => a.label.localeCompare(b.label));
+
+      // Place unlocked keys in available positions (skipping locked positions)
+      let unlockedKeyIndex = 0;
+      
+      Object.keys(config.modules).forEach(moduleId => {
+        const maxKeys = config.modules[moduleId].type === '60-key' ? 60 : 40;
+        
+        for (let keyId = 1; keyId <= maxKeys; keyId++) {
+          // Skip if we've placed all unlocked keys
+          if (unlockedKeyIndex >= allUnlockedKeys.length) break;
+          
+          // If position is empty (not locked), place next unlocked key
+          if (!config.modules[moduleId].keys[keyId]) {
+            const key = allUnlockedKeys[unlockedKeyIndex];
+            config.modules[moduleId].keys[keyId] = {
+              extension: key.extension,
+              label: key.label,
+              line: key.line,
+              type: key.type,
+              value: key.value,
+              locked: false
+            };
+            unlockedKeyIndex++;
+          }
+        }
+      });
+
+      showSuccess('Keys sorted (locked keys preserved in place)');
+      renderConfig();
+    }
+
+    // Import/Export Functions
+    function importConfig() {
+      const configText = document.getElementById('config-text').value.trim();
+      if (!configText) {
+        showError('Please enter configuration text');
+        return;
+      }
+
+      try {
+        const newConfig = { modules: {} };
+        const lines = configText.split('\n').filter(line => line.trim());
+        
+        lines.forEach(line => {
+          const [key, value] = line.split('=');
+          const parts = key.split('.');
+          
+          if (parts.length === 5 && parts[0] === 'expansion_module' && parts[2] === 'key') {
+            const moduleId = parts[1];
+            const keyId = parts[3];
+            const property = parts[4];
+            
+            if (!newConfig.modules[moduleId]) {
+              newConfig.modules[moduleId] = { keys: {} };
+            }
+            if (!newConfig.modules[moduleId].keys[keyId]) {
+              newConfig.modules[moduleId].keys[keyId] = {
+                extension: '',
+                label: '',
+                line: '1',
+                type: '16',
+                value: ''
+              };
+            }
+            
+            // Set line based on type
+            if (property === 'type') {
+              newConfig.modules[moduleId].keys[keyId][property] = value;
+              newConfig.modules[moduleId].keys[keyId].line = value === '16' ? '1' : '0';
+            } else {
+              newConfig.modules[moduleId].keys[keyId][property] = value;
+            }
+          }
+        });
+
+        // Sync values for BLF keys
+        Object.entries(newConfig.modules).forEach(([moduleId, moduleData]) => {
+          Object.entries(moduleData.keys).forEach(([keyId, keyData]) => {
+            if (keyData.type === '16') {
+              keyData.value = keyData.extension || '';
+            }
+          });
+        });
+        
+        config = newConfig;
+        showSuccess('Configuration imported successfully');
+        renderConfig();
+        showSection('config');
+      } catch (e) {
+        showError('Invalid configuration format. Please check your input.');
+        console.error(e);
+      }
+    }
+
+    function exportConfig() {
+      let configText = '';
+      
+      Object.entries(config.modules).forEach(([moduleId, moduleData]) => {
+        Object.entries(moduleData.keys).forEach(([keyId, keyData]) => {
+          Object.entries(keyData).forEach(([property, value]) => {
+            if (value && property !== 'locked') {
+              configText += `expansion_module.${moduleId}.key.${keyId}.${property}=${value}\n`;
+            }
+          });
+        });
+      });
+      
+      document.getElementById('config-text').value = configText.trim();
+      showSuccess('Configuration exported to text area');
+      showSection('import');
+    }
+
+    function resetConfig() {
+      if (confirm('Are you sure you want to reset the configuration? All changes will be lost.')) {
+        config = { modules: {} };
+        addModule();
+        document.getElementById('config-text').value = '';
+        showSuccess('Configuration reset');
+        renderConfig();
+      }
+    }
+
+    // Rendering Functions
+    function renderConfig() {
+      const container = document.getElementById('modules-container');
+      container.innerHTML = '';
+      
+      Object.entries(config.modules).forEach(([moduleId, moduleData]) => {
+        const moduleCard = document.createElement('div');
+        moduleCard.className = 'module-card bg-white shadow-md p-4 rounded';
+        moduleCard.innerHTML = `
+          <div class="flex justify-between items-center mb-4">
+              <h3 class="text-lg font-bold">
+              <i class="fas fa-microchip mr-2 text-blue-500"></i>
+              Module ${moduleId} (${Object.keys(moduleData.keys).length}/${moduleData.type === '60-key' ? 60 : 40})
+              <select onchange="changeModuleType(${moduleId}, this.value)" 
+                      class="ml-2 border rounded p-1 text-sm">
+                <option value="40-key" ${moduleData.type === '40-key' ? 'selected' : ''}>40-key</option>
+                <option value="60-key" ${moduleData.type === '60-key' ? 'selected' : ''}>60-key</option>
+              </select>
+            </h3>
+            <div>
+              <button onclick="sortKeys(${moduleId})" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded mr-2 text-sm">
+                <i class="fas fa-sort-alpha-down mr-1"></i>Sort
+              </button>
+              <button onclick="removeModule(${moduleId})" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
+                <i class="fas fa-trash-alt mr-1"></i>Remove
+              </button>
+            </div>
+          </div>
+          <div class="key-list grid grid-cols-2 gap-2">
+            ${Object.entries(moduleData.keys).map(([keyId, keyData]) => `
+              <div class="key-item bg-gray-50 p-3 rounded border border-gray-200 col-span-1" 
+                   draggable="${!keyData.locked}"
+                   data-module-id="${moduleId}"
+                   data-key-id="${keyId}"
+                   ondragstart="${!keyData.locked ? `dragStart(${moduleId}, ${keyId})` : ''}"
+                   ondragover="${!keyData.locked ? 'dragOver(event)' : ''}"
+                   ondragleave="${!keyData.locked ? 'dragLeave(event)' : ''}"
+                   ondrop="${!keyData.locked ? `drop(${moduleId}, ${keyId})` : ''}"
+                   style="${keyData.locked ? 'opacity: 0.8;' : ''}">
+                <div class="flex items-center mb-2">
+                  <i class="fas fa-grip-vertical mr-2 text-gray-400 ${keyData.locked ? 'cursor-not-allowed' : 'cursor-move'}"></i>
+                  <span class="font-medium">Key ${keyId}</span>
+                  <div class="ml-auto flex gap-1">
+                    <button onclick="toggleLockKey(${moduleId}, ${keyId})" class="${keyData.locked ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-gray-500 hover:bg-gray-600'} text-white px-2 py-1 rounded text-xs">
+                      <i class="fas ${keyData.locked ? 'fa-lock' : 'fa-lock-open'}"></i>
+                    </button>
+                    <button onclick="removeKey(${moduleId}, ${keyId})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-xs">
+                      <i class="fas fa-times"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="grid grid-cols-1 gap-2">
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Label</label>
+                    <input type="text" value="${keyData.label || ''}" 
+                           onchange="updateKey(${moduleId}, ${keyId}, 'label', this.value)"
+                           class="w-full border rounded p-2 text-sm">
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-600 mb-1">Type</label>
+                    <select value="${keyData.type || '16'}" 
+                            onchange="handleTypeChange(${moduleId}, ${keyId}, this.value)"
+                            class="w-full border rounded p-2 text-sm">
+                      <option value="16" ${keyData.type === '16' ? 'selected' : ''}>BLF</option>
+                      <option value="3" ${keyData.type === '3' ? 'selected' : ''}>Transfer</option>
+                    </select>
+                  </div>
+                  <div class="extension-field ${keyData.type === '3' ? 'hidden' : ''}">
+                    <label class="block text-sm text-gray-600 mb-1">Extension</label>
+                    <input type="text" value="${keyData.extension || ''}" 
+                           onchange="handleExtensionChange(${moduleId}, ${keyId}, this.value)"
+                           class="w-full border rounded p-2 text-sm">
+                  </div>
+                  <input type="hidden" value="${keyData.type === '16' ? '1' : '0'}" 
+                         onchange="updateKey(${moduleId}, ${keyId}, 'line', this.value)">
+                  <div class="value-field ${keyData.type === '3' ? '' : 'hidden'}">
+                    <label class="block text-sm text-gray-600 mb-1">Value</label>
+                    <input type="text" value="${keyData.value || ''}" 
+                           onchange="updateKey(${moduleId}, ${keyId}, 'value', this.value)"
+                           class="w-full border rounded p-2 text-sm">
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+          ${Object.keys(moduleData.keys).length < (moduleData.type === '60-key' ? 60 : 40) ? `
+            <button onclick="addKey(${moduleId})" class="mt-3 bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded w-full">
+              <i class="fas fa-plus mr-1"></i>Add Key
+            </button>
+          ` : ''}
+        `;
+        container.appendChild(moduleCard);
+      });
+    }
+
+    // Alert Functions
+    function showError(message) {
+      document.getElementById('error-message').textContent = message;
+      document.getElementById('error-alert').classList.remove('hidden');
+    }
+
+    function showSuccess(message) {
+      document.getElementById('success-message').textContent = message;
+      document.getElementById('success-alert').classList.remove('hidden');
+      setTimeout(() => {
+        document.getElementById('success-alert').classList.add('hidden');
+      }, 3000);
+    }
+  </script>
+
+  <!-- Footer Section -->
+  <footer class="mt-12 text-center text-gray-500 text-sm">
+    <div class="border-t border-gray-200 pt-4">
+      <p>© 2025 Pareto Business Solutions. All rights reserved.</p>
+      <p class="mt-1">Developed by <a href="mailto:Jonathan@paretobiz.com" class="text-blue-600 hover:underline">Jonathan Gauthier</a></p>
+    </div>
+  </footer>
+</body>
+</html>
