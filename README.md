@@ -2,7 +2,8 @@
 
 A web-based tool for managing DSS (Direct Station Selection) keys on Yealink phones with expansion modules.
 
-![image](https://github.com/user-attachments/assets/252c77bf-d43c-4b18-aac1-959286eec425)
+![image](https://github.com/user-attachments/assets/480bef68-ef9f-42ae-9fbd-31efb8c6d52d)
+
 
 
 ## Features
