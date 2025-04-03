@@ -78,4 +78,6 @@ MIT License
 ## Credits
 
 Developed by [Jonathan Gauthier](mailto:Jonathan@paretobiz.com)  
-Â© 2025 [Pareto Business Solutions](https://paretobiz.com)
+© 2025 [Pareto Business Solutions](https://paretobiz.com)
+
+[![Buy me a Coffee](https://github.com/user-attachments/assets/39b6b3e4-2a35-4e8a-9fb4-99da59ea615a)](https://buymeacoffee.com/jonathangauthier)
