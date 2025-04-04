@@ -392,7 +392,13 @@ function changeModuleType(moduleId, type) {
         }
       });
 
-      // Collect and sort unlocked keys
+      // Collect and sort unlocked keys by page
+      const pages = [
+        {start: 1, end: 20},
+        {start: 21, end: 40},
+        {start: 41, end: 60}
+      ];
+
       let unlockedKeys = [];
       Object.entries(originalKeys).forEach(([keyId, keyData]) => {
         if (!keyData.locked) {
@@ -404,40 +410,44 @@ function changeModuleType(moduleId, type) {
       });
       unlockedKeys.sort((a, b) => a.label.localeCompare(b.label));
 
-      // Place unlocked keys in linear order (odd then even positions)
       let unlockedKeyIndex = 0;
       
-      // First fill odd positions (1, 3, 5...)
-      for (let keyId = 1; keyId <= maxKeys; keyId += 2) {
-        if (unlockedKeyIndex >= unlockedKeys.length) break;
-        if (!config.modules[moduleId].keys[keyId]) {
-          const key = unlockedKeys[unlockedKeyIndex];
-          config.modules[moduleId].keys[keyId] = {
-            extension: key.extension,
-            label: key.label,
-            line: key.line,
-            type: key.type,
-            value: key.value,
-            locked: false
-          };
-          unlockedKeyIndex++;
+      // Process each page separately
+      for (const page of pages) {
+        if (page.end > maxKeys) continue;
+        
+        // First fill odd positions in page
+        for (let keyId = page.start; keyId <= page.end; keyId += 2) {
+          if (unlockedKeyIndex >= unlockedKeys.length) break;
+          if (!config.modules[moduleId].keys[keyId]) {
+            const key = unlockedKeys[unlockedKeyIndex];
+            config.modules[moduleId].keys[keyId] = {
+              extension: key.extension,
+              label: key.label,
+              line: key.line,
+              type: key.type,
+              value: key.value,
+              locked: false
+            };
+            unlockedKeyIndex++;
+          }
         }
-      }
-      
-      // Then fill even positions (2, 4, 6...)
-      for (let keyId = 2; keyId <= maxKeys; keyId += 2) {
-        if (unlockedKeyIndex >= unlockedKeys.length) break;
-        if (!config.modules[moduleId].keys[keyId]) {
-          const key = unlockedKeys[unlockedKeyIndex];
-          config.modules[moduleId].keys[keyId] = {
-            extension: key.extension,
-            label: key.label,
-            line: key.line,
-            type: key.type,
-            value: key.value,
-            locked: false
-          };
-          unlockedKeyIndex++;
+        
+        // Then fill even positions in page
+        for (let keyId = page.start + 1; keyId <= page.end; keyId += 2) {
+          if (unlockedKeyIndex >= unlockedKeys.length) break;
+          if (!config.modules[moduleId].keys[keyId]) {
+            const key = unlockedKeys[unlockedKeyIndex];
+            config.modules[moduleId].keys[keyId] = {
+              extension: key.extension,
+              label: key.label,
+              line: key.line,
+              type: key.type,
+              value: key.value,
+              locked: false
+            };
+            unlockedKeyIndex++;
+          }
         }
       }
 
@@ -478,43 +488,55 @@ function changeModuleType(moduleId, type) {
       // Sort unlocked keys alphabetically
       allUnlockedKeys.sort((a, b) => a.label.localeCompare(b.label));
 
-      // Place unlocked keys in linear order across all modules
+      // Define page ranges
+      const pages = [
+        {start: 1, end: 20},
+        {start: 21, end: 40},
+        {start: 41, end: 60}
+      ];
+
       let unlockedKeyIndex = 0;
       
+      // Process each module
       Object.keys(config.modules).forEach(moduleId => {
         const maxKeys = config.modules[moduleId].type === '60-key' ? 60 : 40;
         
-        // First fill odd positions (1, 3, 5...)
-        for (let keyId = 1; keyId <= maxKeys; keyId += 2) {
-          if (unlockedKeyIndex >= allUnlockedKeys.length) break;
-          if (!config.modules[moduleId].keys[keyId]) {
-            const key = allUnlockedKeys[unlockedKeyIndex];
-            config.modules[moduleId].keys[keyId] = {
-              extension: key.extension,
-              label: key.label,
-              line: key.line,
-              type: key.type,
-              value: key.value,
-              locked: false
-            };
-            unlockedKeyIndex++;
+        // Process each page in the module
+        for (const page of pages) {
+          if (page.end > maxKeys) continue;
+          
+          // First fill odd positions in page
+          for (let keyId = page.start; keyId <= page.end; keyId += 2) {
+            if (unlockedKeyIndex >= allUnlockedKeys.length) break;
+            if (!config.modules[moduleId].keys[keyId]) {
+              const key = allUnlockedKeys[unlockedKeyIndex];
+              config.modules[moduleId].keys[keyId] = {
+                extension: key.extension,
+                label: key.label,
+                line: key.line,
+                type: key.type,
+                value: key.value,
+                locked: false
+              };
+              unlockedKeyIndex++;
+            }
           }
-        }
-        
-        // Then fill even positions (2, 4, 6...)
-        for (let keyId = 2; keyId <= maxKeys; keyId += 2) {
-          if (unlockedKeyIndex >= allUnlockedKeys.length) break;
-          if (!config.modules[moduleId].keys[keyId]) {
-            const key = allUnlockedKeys[unlockedKeyIndex];
-            config.modules[moduleId].keys[keyId] = {
-              extension: key.extension,
-              label: key.label,
-              line: key.line,
-              type: key.type,
-              value: key.value,
-              locked: false
-            };
-            unlockedKeyIndex++;
+          
+          // Then fill even positions in page
+          for (let keyId = page.start + 1; keyId <= page.end; keyId += 2) {
+            if (unlockedKeyIndex >= allUnlockedKeys.length) break;
+            if (!config.modules[moduleId].keys[keyId]) {
+              const key = allUnlockedKeys[unlockedKeyIndex];
+              config.modules[moduleId].keys[keyId] = {
+                extension: key.extension,
+                label: key.label,
+                line: key.line,
+                type: key.type,
+                value: key.value,
+                locked: false
+              };
+              unlockedKeyIndex++;
+            }
           }
         }
       });
