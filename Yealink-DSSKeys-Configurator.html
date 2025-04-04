@@ -71,8 +71,11 @@
         <button onclick="addModule()" class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded">
           <i class="fas fa-plus mr-2"></i>Add Module
         </button>
-        <button onclick="sortAllKeys()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded">
-          <i class="fas fa-sort-alpha-down mr-2"></i>Sort All Keys
+        <button onclick="sortAllKeys()" class="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded mr-2">
+          <i class="fas fa-sort-alpha-down mr-2"></i>Sort All
+        </button>
+        <button onclick="linearSortAllKeys()" class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded">
+          <i class="fas fa-sort-numeric-down mr-2"></i>Linear Sort All
         </button>
       </div>
 
@@ -349,6 +352,153 @@ function changeModuleType(moduleId, type) {
       renderConfig();
     }
 
+    // Linear Sort Functions
+    function linearSortKeys(moduleId) {
+      if (!config.modules[moduleId]) return;
+      
+      // Create a copy of the original keys to preserve locked keys
+      const originalKeys = JSON.parse(JSON.stringify(config.modules[moduleId].keys));
+      const maxKeys = config.modules[moduleId].type === '60-key' ? 60 : 40;
+      
+      // First, preserve all locked keys exactly as they were
+      config.modules[moduleId].keys = {};
+      Object.entries(originalKeys).forEach(([keyId, keyData]) => {
+        if (keyData.locked) {
+          config.modules[moduleId].keys[keyId] = JSON.parse(JSON.stringify(keyData));
+        }
+      });
+
+      // Collect and sort unlocked keys
+      let unlockedKeys = [];
+      Object.entries(originalKeys).forEach(([keyId, keyData]) => {
+        if (!keyData.locked) {
+          unlockedKeys.push({
+            ...keyData,
+            originalKeyId: keyId
+          });
+        }
+      });
+      unlockedKeys.sort((a, b) => a.label.localeCompare(b.label));
+
+      // Place unlocked keys in linear order (odd then even positions)
+      let unlockedKeyIndex = 0;
+      
+      // First fill odd positions (1, 3, 5...)
+      for (let keyId = 1; keyId <= maxKeys; keyId += 2) {
+        if (unlockedKeyIndex >= unlockedKeys.length) break;
+        if (!config.modules[moduleId].keys[keyId]) {
+          const key = unlockedKeys[unlockedKeyIndex];
+          config.modules[moduleId].keys[keyId] = {
+            extension: key.extension,
+            label: key.label,
+            line: key.line,
+            type: key.type,
+            value: key.value,
+            locked: false
+          };
+          unlockedKeyIndex++;
+        }
+      }
+      
+      // Then fill even positions (2, 4, 6...)
+      for (let keyId = 2; keyId <= maxKeys; keyId += 2) {
+        if (unlockedKeyIndex >= unlockedKeys.length) break;
+        if (!config.modules[moduleId].keys[keyId]) {
+          const key = unlockedKeys[unlockedKeyIndex];
+          config.modules[moduleId].keys[keyId] = {
+            extension: key.extension,
+            label: key.label,
+            line: key.line,
+            type: key.type,
+            value: key.value,
+            locked: false
+          };
+          unlockedKeyIndex++;
+        }
+      }
+
+      showSuccess(`Keys in module ${moduleId} sorted in linear order`);
+      renderConfig();
+    }
+
+    function linearSortAllKeys() {
+      // Create a copy of the original config to preserve locked keys
+      const originalConfig = JSON.parse(JSON.stringify(config));
+      
+      // First, preserve all locked keys exactly as they were in their original positions
+      Object.keys(config.modules).forEach(moduleId => {
+        config.modules[moduleId].keys = {};
+        
+        // Restore all keys but only keep locked ones in their exact positions
+        Object.entries(originalConfig.modules[moduleId].keys).forEach(([keyId, keyData]) => {
+          if (keyData.locked) {
+            config.modules[moduleId].keys[keyId] = JSON.parse(JSON.stringify(keyData));
+          }
+        });
+      });
+
+      // Collect all unlocked keys
+      let allUnlockedKeys = [];
+      Object.entries(originalConfig.modules).forEach(([moduleId, moduleData]) => {
+        Object.entries(moduleData.keys).forEach(([keyId, keyData]) => {
+          if (!keyData.locked) {
+            allUnlockedKeys.push({
+              ...keyData,
+              originalModule: moduleId,
+              originalKeyId: keyId
+            });
+          }
+        });
+      });
+
+      // Sort unlocked keys alphabetically
+      allUnlockedKeys.sort((a, b) => a.label.localeCompare(b.label));
+
+      // Place unlocked keys in linear order across all modules
+      let unlockedKeyIndex = 0;
+      
+      Object.keys(config.modules).forEach(moduleId => {
+        const maxKeys = config.modules[moduleId].type === '60-key' ? 60 : 40;
+        
+        // First fill odd positions (1, 3, 5...)
+        for (let keyId = 1; keyId <= maxKeys; keyId += 2) {
+          if (unlockedKeyIndex >= allUnlockedKeys.length) break;
+          if (!config.modules[moduleId].keys[keyId]) {
+            const key = allUnlockedKeys[unlockedKeyIndex];
+            config.modules[moduleId].keys[keyId] = {
+              extension: key.extension,
+              label: key.label,
+              line: key.line,
+              type: key.type,
+              value: key.value,
+              locked: false
+            };
+            unlockedKeyIndex++;
+          }
+        }
+        
+        // Then fill even positions (2, 4, 6...)
+        for (let keyId = 2; keyId <= maxKeys; keyId += 2) {
+          if (unlockedKeyIndex >= allUnlockedKeys.length) break;
+          if (!config.modules[moduleId].keys[keyId]) {
+            const key = allUnlockedKeys[unlockedKeyIndex];
+            config.modules[moduleId].keys[keyId] = {
+              extension: key.extension,
+              label: key.label,
+              line: key.line,
+              type: key.type,
+              value: key.value,
+              locked: false
+            };
+            unlockedKeyIndex++;
+          }
+        }
+      });
+
+      showSuccess('All keys sorted in linear order (odd then even positions)');
+      renderConfig();
+    }
+
     function sortAllKeys() {
       // Create a copy of the original config to preserve locked keys
       const originalConfig = JSON.parse(JSON.stringify(config));
@@ -607,6 +757,9 @@ function changeModuleType(moduleId, type) {
             <div>
               <button onclick="sortKeys(${moduleId})" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-1 rounded mr-2 text-sm">
                 <i class="fas fa-sort-alpha-down mr-1"></i>Sort
+              </button>
+              <button onclick="linearSortKeys(${moduleId})" class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded mr-2 text-sm">
+                <i class="fas fa-sort-numeric-down mr-1"></i>Linear Sort
               </button>
               <button onclick="removeModule(${moduleId})" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-sm">
                 <i class="fas fa-trash-alt mr-1"></i>Remove
