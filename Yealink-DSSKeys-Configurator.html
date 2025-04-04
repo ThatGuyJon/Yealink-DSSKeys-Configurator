@@ -129,6 +129,11 @@
       // Add a default module if none exist
       if (Object.keys(config.modules).length === 0) {
         addModule();
+      } else {
+        // Ensure all existing modules default to page 1
+        Object.keys(config.modules).forEach(moduleId => {
+          config.modules[moduleId].currentPage = 1;
+        });
       }
       renderConfig();
     });
@@ -153,12 +158,31 @@
     }
 
     // Module Management
+    function hasKeysInPage(keys, page) {
+      const pageStart = (page - 1) * 20 + 1;
+      const pageEnd = page * 20;
+      return Object.keys(keys).some(keyId => {
+        const numKeyId = parseInt(keyId);
+        return numKeyId >= pageStart && numKeyId <= pageEnd;
+      });
+    }
+
+    function changePage(moduleId, page) {
+      if (config.modules[moduleId]) {
+        config.modules[moduleId].currentPage = page;
+        renderConfig();
+      }
+    }
+
     function addModule() {
       const moduleId = Object.keys(config.modules).length + 1;
       config.modules[moduleId] = { 
         keys: {},
-        type: '60-key' // Default to 60-key module
+        type: '60-key', // Default to 60-key module
+        currentPage: 1  // Explicitly set to page 1 (1-20)
       };
+      // Force render to ensure page 1 is shown
+      renderConfig();
       showSuccess(`Added EXP43/50 module ${moduleId}`);
       renderConfig();
     }
@@ -615,6 +639,10 @@ function changeModuleType(moduleId, type) {
           });
         });
         
+        // Set all modules to page 1 after import
+        Object.keys(newConfig.modules).forEach(moduleId => {
+          newConfig.modules[moduleId].currentPage = 1;
+        });
         config = newConfig;
         showSuccess('Configuration imported successfully');
         renderConfig();
@@ -710,6 +738,10 @@ function changeModuleType(moduleId, type) {
               };
             }
 
+            // Set all modules to page 1 after import
+            Object.keys(newConfig.modules).forEach(moduleId => {
+              newConfig.modules[moduleId].currentPage = 1;
+            });
             config = newConfig;
             showSuccess('CSV imported successfully');
             renderConfig();
@@ -766,8 +798,33 @@ function changeModuleType(moduleId, type) {
               </button>
             </div>
           </div>
-          <div class="key-list grid grid-cols-2 gap-2">
-            ${Object.entries(moduleData.keys).map(([keyId, keyData]) => `
+            <div class="flex justify-center mb-3">
+              <div class="inline-flex rounded-md shadow-sm" role="group">
+                <button onclick="changePage(${moduleId}, 1)" class="px-3 py-1 text-sm font-medium rounded-l-lg border ${moduleData.currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}">
+                  1
+                </button>
+                <button ${hasKeysInPage(moduleData.keys, 2) ? `onclick="changePage(${moduleId}, 2)" class="px-3 py-1 text-sm font-medium border-t border-b ${moduleData.currentPage === 2 ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}"` : `class="px-3 py-1 text-sm font-medium border-t border-b bg-gray-100 text-gray-400 cursor-not-allowed"`}>
+                  2
+                </button>
+                ${moduleData.type === '60-key' ? `
+                <button ${hasKeysInPage(moduleData.keys, 3) ? `onclick="changePage(${moduleId}, 3)" class="px-3 py-1 text-sm font-medium rounded-r-lg border ${moduleData.currentPage === 3 ? 'bg-blue-500 text-white' : 'bg-white text-gray-700 hover:bg-gray-50'}"` : `class="px-3 py-1 text-sm font-medium rounded-r-lg border bg-gray-100 text-gray-400 cursor-not-allowed"`}>
+                  3
+                </button>
+                ` : `
+                <button class="px-3 py-1 text-sm font-medium rounded-r-lg border bg-gray-100 text-gray-400 cursor-not-allowed">
+                  3
+                </button>
+                `}
+              </div>
+            </div>
+            <div class="key-list grid grid-cols-2 gap-2">
+            ${Object.entries(moduleData.keys)
+              .filter(([keyId]) => {
+                const pageStart = (moduleData.currentPage - 1) * 20 + 1;
+                const pageEnd = moduleData.currentPage * 20;
+                return keyId >= pageStart && keyId <= pageEnd;
+              })
+              .map(([keyId, keyData]) => `
               <div class="key-item bg-gray-50 p-3 rounded border border-gray-200 col-span-1" 
                    draggable="${!keyData.locked}"
                    data-module-id="${moduleId}"
