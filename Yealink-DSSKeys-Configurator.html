@@ -92,10 +92,16 @@
         </div>
         <div class="flex flex-wrap gap-2">
           <button onclick="importConfig()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
-            <i class="fas fa-file-import mr-2"></i>Import Config
+            <i class="fas fa-file-import mr-2"></i>Import Yealink
           </button>
           <button onclick="exportConfig()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded">
-            <i class="fas fa-file-export mr-2"></i>Export Config
+            <i class="fas fa-file-export mr-2"></i>Export Yealink
+          </button>
+          <button onclick="importCSV()" class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded">
+            <i class="fas fa-file-csv mr-2"></i>Import CSV
+          </button>
+          <button onclick="exportCSV()" class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded">
+            <i class="fas fa-file-csv mr-2"></i>Export CSV
           </button>
           <button onclick="resetConfig()" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded">
             <i class="fas fa-trash-alt mr-2"></i>Reset Config
@@ -148,9 +154,9 @@
       const moduleId = Object.keys(config.modules).length + 1;
       config.modules[moduleId] = { 
         keys: {},
-        type: '40-key' // Default to 40-key module
+        type: '60-key' // Default to 60-key module
       };
-      showSuccess(`Added 40-key module ${moduleId}`);
+      showSuccess(`Added EXP43/50 module ${moduleId}`);
       renderConfig();
     }
 
@@ -487,6 +493,88 @@ function changeModuleType(moduleId, type) {
       showSection('import');
     }
 
+    // CSV Functions
+    function exportCSV() {
+      let csv = 'Extension,Label,Line,Type,Value\n';
+      
+      Object.entries(config.modules).forEach(([moduleId, moduleData]) => {
+        Object.entries(moduleData.keys).forEach(([keyId, keyData]) => {
+          csv += `"${keyData.extension || ''}","${keyData.label || ''}",${keyData.line || '1'},${keyData.type || '16'},"${keyData.value || ''}"\n`;
+        });
+      });
+
+      // Create download link
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'yealink_dss_config.csv';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      showSuccess('CSV exported successfully');
+    }
+
+    function importCSV() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.csv';
+      
+      input.onchange = e => {
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = event => {
+          try {
+            const csvData = event.target.result;
+            const lines = csvData.split('\n');
+            const headers = lines[0].split(',').map(h => h.trim());
+            
+            // Reset config but keep module structure
+            const newConfig = { modules: {} };
+            let currentModuleId = Object.keys(config.modules)[0] || '1';
+            newConfig.modules[currentModuleId] = { keys: {}, type: '60-key' };
+            
+            let keyId = 1;
+            for (let i = 1; i < lines.length; i++) {
+              if (!lines[i].trim()) continue;
+              
+              // Create new module if current one is full
+              if (keyId > 60) {
+                currentModuleId = String(Number(currentModuleId) + 1);
+                newConfig.modules[currentModuleId] = { keys: {}, type: '60-key' };
+                keyId = 1;
+              }
+              
+              const values = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+              
+              newConfig.modules[currentModuleId].keys[keyId++] = {
+                extension: values[0] ? values[0].replace(/"/g, '') : '',
+                label: values[1] ? values[1].replace(/"/g, '') : '',
+                line: values[2] || '1',
+                type: values[3] || '16',
+                value: values[4] ? values[4].replace(/"/g, '') : '',
+                locked: false
+              };
+            }
+
+            config = newConfig;
+            showSuccess('CSV imported successfully');
+            renderConfig();
+          } catch (e) {
+            showError('Error parsing CSV file');
+            console.error(e);
+          }
+        };
+        
+        reader.readAsText(file);
+      };
+      
+      input.click();
+    }
+
     function resetConfig() {
       if (confirm('Are you sure you want to reset the configuration? All changes will be lost.')) {
         config = { modules: {} };
@@ -512,8 +600,8 @@ function changeModuleType(moduleId, type) {
               Module ${moduleId} (${Object.keys(moduleData.keys).length}/${moduleData.type === '60-key' ? 60 : 40})
               <select onchange="changeModuleType(${moduleId}, this.value)" 
                       class="ml-2 border rounded p-1 text-sm">
-                <option value="40-key" ${moduleData.type === '40-key' ? 'selected' : ''}>40-key</option>
-                <option value="60-key" ${moduleData.type === '60-key' ? 'selected' : ''}>60-key</option>
+                <option value="40-key" ${moduleData.type === '40-key' ? 'selected' : ''}>EXP40</option>
+                <option value="60-key" ${moduleData.type === '60-key' ? 'selected' : ''}>EXP43/50</option>
               </select>
             </h3>
             <div>
@@ -611,7 +699,7 @@ function changeModuleType(moduleId, type) {
   <footer class="mt-12 text-center text-gray-500 text-sm">
     <div class="border-t border-gray-200 pt-4">
       <p>© 2025 Pareto Business Solutions. All rights reserved.</p>
-      <p class="mt-1">Developed by <a href="mailto:Jonathan@paretobiz.com" class="text-blue-600 hover:underline">Jonathan Gauthier</a></p>
+      <p class="mt-1">Created by <a href="mailto:Jonathan@paretobiz.com" class="text-blue-600 hover:underline">Jonathan Gauthier</a> | Developed with AI</p>
       <div class="mt-4">
         <script type="text/javascript" src="https://cdnjs.buymeacoffee.com/1.0.0/button.prod.min.js" 
             data-name="bmc-button" 
