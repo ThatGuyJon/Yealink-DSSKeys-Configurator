@@ -11,8 +11,10 @@ A web-based tool for managing DSS (Direct Station Selection) keys on Yealink pho
 - **Multiple Module Support**: Configure keys for up to 4 expansion modules
 - **Key Types**: Supports BLF (Busy Lamp Field) and Transfer key types
 - **Drag-and-Drop**: Easily rearrange keys between positions
-- **Sorting**: Alphabetical sorting of keys while preserving locked positions
-- **Import/Export**: Work with Yealink's native configuration format
+- **Sorting**: 
+  - Alphabetical sorting of keys
+  - Linear sorting: sorts keys in odd/even positions (1-20, 21-40, 41-60)
+- **Import/Export**: Work with Yealink's native configuration format and CSV format
 - **Responsive Design**: Works on desktop and mobile devices
 
 ## Usage
@@ -28,6 +30,7 @@ A web-based tool for managing DSS (Direct Station Selection) keys on Yealink pho
 3. **Import/Export**:
    - Paste existing Yealink config to import
    - Export to get Yealink-compatible configuration text
+   - Import and export CSV files for easy data management
 
 ### Key Properties
 
